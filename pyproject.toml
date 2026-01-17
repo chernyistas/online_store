@@ -24,7 +24,12 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 disallow_untyped_defs = true
 warn_return_any = true
-exclude = 'venv'
+exclude = [
+    "venv/",
+    "migrations/",
+    "**/migrations/",
+    ".env"
+]
 
 [tool.black]
 line-length = 119
