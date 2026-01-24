@@ -16,7 +16,7 @@
     {% endif %}
     <div class="card">
         <div class="card-body">
-            <p><strong>Цена:</strong> {{ product.price }} ₽</p>
+            <p><strong>Цена:</strong> {{ product.price }}</p>
             <p><strong>Описание:</strong> {{ product.description}}</p>
             <p><strong>Категория:</strong> {{ product.category.name }}</p>
             <p><strong>Дата создания:</strong> {{ product.created_at|date:"d.m.Y H:i" }}</p>
@@ -28,5 +28,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
