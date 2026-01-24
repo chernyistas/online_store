@@ -2,7 +2,7 @@ from typing import Optional
 
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 
 from catalog.models import ContactInfo, Product
 
@@ -43,3 +43,8 @@ def contact(request: HttpRequest) -> HttpResponse:
         },
     }
     return render(request, "contact.html", context)
+
+def product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    context = {"product": product}
+    return render(request, "product_detail.html", context)
