@@ -114,6 +114,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # Настройки для тестирования (вывод в консоль)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
 
 # Или для реальной отправки (раскомментировать когда нужно):
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
