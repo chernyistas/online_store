@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Контакты - Online store{% endblock %}
+
+{% block content %}
+<div class="pricing-header px-3 py-3 pt-md-5 pb-mb-4 mx-auto text-center">
+    <h1 class="display-4">Контакты</h1>
+</div>
+
+<div class="container">
+    <div class="row text-start">
+        <div class="col-lg-9 col-md-6 col-sm-12">
+            <div class="card mb-4 box-shadow">
+                <div class="card-body">
+                    {% if contacts %}
+                        <h4 class="mb-3">Наши контактные данные</h4>
+                        <table class="table table-striped">
+                            {% for c in contacts %}
+                                <tr>
+                                    <td class="w-25">Название</td>
+                                    <td>{{ c.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="w-25">Email</td>
+                                    <td>{{ c.email }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="w-25">Телефон</td>
+                                    <td>{{ c.phone }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="w-25">Адрес</td>
+                                    <td>{{ c.address }}</td>
+                                </tr>
+                                {% if not forloop.last %}
+                                    <tr><td colspan="2"><hr></td></tr>
+                                {% endif %}
+                            {% endfor %}
+                        </table>
+                    {% else %}
+                        <table class="table table-striped">
+                            <tr>
+                                <td class="w-25">Страна</td>
+                                <td>Россия</td>
+                            </tr>
+                            <tr>
+                                <td class="w-25">ИНН</td>
+                                <td>601*******</td>
+                            </tr>
+                            <tr>
+                                <td class="w-25">Адрес</td>
+                                <td>Московская область, Мытищи, улица Самая Хорошая</td>
+                            </tr>
+                        </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <div class="card mb-4 box-shadow">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Свяжитесь с нами</h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-success" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" action="" class="form-floating">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="name">Имя</label>
+                            <input type="text" name="name" class="form-control"
+                                   id="name" placeholder="Ваше имя" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone">Телефон</label>
+                            <input type="text" name="phone" class="form-control"
+                                   id="phone" placeholder="Контактный телефон">
+                        </div>
+                        <div class="mb-3">
+                            <label for="message">Сообщение</label>
+                            <textarea name="message" class="form-control"
+                                      id="message" placeholder="Ваше сообщение"
+                                      required></textarea>
+                        </div>
+                        <button type="submit"
+                                class="btn btn-lg btn-block btn-outline-primary">
+                            Отправить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

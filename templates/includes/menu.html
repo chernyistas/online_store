@@ -1,0 +1,13 @@
+<div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom box-shadow">
+    <h5 class="my-0 mr-md-auto font-weight-normal">
+        <a href="{% url 'catalog:home' %}" style="text-decoration: none; color: inherit;">
+            Online store
+        </a>
+    </h5>
+    <nav class="ms-5">
+        <a class="p-2 btn btn-outline-primary" href="{% url 'catalog:home' %}">Каталог</a>
+        <a class="p-2 btn btn-outline-primary" href="{% url 'catalog:contact' %}">Контакты</a>
+        <a class="p-2 btn btn-outline-success" href="{% url 'catalog:product_create' %}">+ Добавить товар</a>
+        <a class="p-2 btn btn-outline-primary" href="{% url 'blog:blogpost_list' %}">Блог</a>
+    </nav>
+</div>
