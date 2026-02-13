@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms import BooleanField
 
 from .models import Category, Product
 
@@ -33,6 +34,12 @@ class ProductForm(forms.ModelForm):
         self.fields["category"].queryset = Category.objects.all()
         self.fields["category"].empty_label = "Выберите категорию"
 
+        for field_name, field in self.fields.items():
+            if isinstance(field, BooleanField):
+                field.widget.attrs.update({'class': 'form-check-input'})
+            else:
+                field.widget.attrs.update({'class': 'form-control'})
+
     def clean_name(self):
         name = self.cleaned_data.get("name")
 
@@ -59,3 +66,16 @@ class ProductForm(forms.ModelForm):
             raise ValidationError(f"Цена должна быть положительным числом")
 
         return price
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+
+        if image:
+            content_type = image.content_type
+            if content_type not in ("image/png", "image/jpeg"):
+                raise ValidationError("Поддерживаются форматы только JPEG и PNG")
+
+            if image.size > 5 * 1024 * 1024:
+                raise ValidationError("Файл слишком большой")
+
+        return image
