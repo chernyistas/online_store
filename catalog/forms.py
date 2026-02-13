@@ -4,8 +4,7 @@ from django.forms import BooleanField
 
 from .models import Category, Product
 
-FORBIDDEN_WORDS = ["казино", "криптовалюта", "крипта", "биржа", "дешево", "бесплатно", "обман", "полиция",
-                   "радар"]
+FORBIDDEN_WORDS = ["казино", "криптовалюта", "крипта", "биржа", "дешево", "бесплатно", "обман", "полиция", "радар"]
 
 
 def validate_forbidden_words(value):
@@ -36,9 +35,9 @@ class ProductForm(forms.ModelForm):
 
         for field_name, field in self.fields.items():
             if isinstance(field, BooleanField):
-                field.widget.attrs.update({'class': 'form-check-input'})
+                field.widget.attrs.update({"class": "form-check-input"})
             else:
-                field.widget.attrs.update({'class': 'form-control'})
+                field.widget.attrs.update({"class": "form-control"})
 
     def clean_name(self):
         name = self.cleaned_data.get("name")
@@ -63,14 +62,14 @@ class ProductForm(forms.ModelForm):
             raise ValidationError("Укажите цену товара")
 
         if price < 0:
-            raise ValidationError(f"Цена должна быть положительным числом")
+            raise ValidationError("Цена должна быть положительным числом")
 
         return price
 
     def clean_image(self):
         image = self.cleaned_data.get("image")
 
-        if image:
+        if image and hasattr(image, 'content_type'):
             content_type = image.content_type
             if content_type not in ("image/png", "image/jpeg"):
                 raise ValidationError("Поддерживаются форматы только JPEG и PNG")
