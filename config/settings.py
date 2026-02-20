@@ -114,7 +114,7 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Настройки для тестирования (вывод в консоль)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
 
 # Или для реальной отправки (раскомментировать когда нужно):
@@ -127,6 +127,6 @@ EMAIL_HOST_USER = "itsmeprivet01@yandex.ru"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 AUTH_USER_MODEL = "users.User"
-
+LOGIN_URL = "users:login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
