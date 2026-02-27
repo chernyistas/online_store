@@ -6,13 +6,14 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.forms.models import BaseModelForm
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
-
-from catalog.models import ContactInfo, Product
+from django.core.cache import cache
+from catalog.models import ContactInfo, Product, Category
 
 from .forms import ProductForm
+from .services import CategoryService, get_products_by_category
 
 
 class ProductListView(ListView):
@@ -68,8 +69,16 @@ class ProductDetailView(DetailView):
     context_object_name = "product"
 
     def get_object(self, queryset: QuerySet = None) -> Product:
-        """Получает объект товара по ID"""
-        return super().get_object(queryset)
+        """Получает товара из кэша"""
+        product_id = self.kwargs.get("pk")
+        cache_key = f"product_detail_{product_id}"
+        product = cache.get(cache_key)
+
+        if not product:
+            product = super().get_object(queryset)
+            cache.set(cache_key, product, 60 * 15)
+
+        return product
 
 
 class ProductCreateView(LoginRequiredMixin, CreateView):
@@ -110,6 +119,14 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
 
         return obj
 
+    def form_valid(self, form):
+        """Обрабатывает валидную форму"""
+        response = super().form_valid(form)
+        cache_key = f"product_detail_{self.object.pk}"
+        cache.delete(cache_key)
+
+        return response
+
 
 class ProductDeleteView(LoginRequiredMixin, DeleteView):
     """Удаление продукта"""
@@ -125,3 +142,35 @@ class ProductDeleteView(LoginRequiredMixin, DeleteView):
             raise PermissionDenied
 
         return obj
+
+    def delete(self, request, *args, **kwargs):
+        """Удаляем из кэша"""
+        product_id = self.kwargs.get("pk")
+        cache_key = f"product_detail_{product_id}"
+        cache.delete(cache_key)
+
+        return super().delete(request, *args, **kwargs)
+
+
+class CategoryProductListView(ListView):
+    """Список товаров определенной категории"""
+    model = Product
+    template_name = "catalog/category_product_list.html"
+    context_object_name = "products"
+    paginate_by = 6
+
+    def get_queryset(self):
+        """Получает товары для текущей категории"""
+        category_id  = self.kwargs.get("pk")
+        get_object_or_404(Category, pk=category_id)
+
+        return get_products_by_category(category_id)
+
+    def get_context_data(self, **kwargs):
+        """Добавляем в шаблон название категории"""
+        context = super().get_context_data(**kwargs)
+        category_id = self.self.kwargs.get("pk")
+        category = get_object_or_404(Category, pk=category_id)
+
+        return context
+
