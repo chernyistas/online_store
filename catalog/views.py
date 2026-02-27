@@ -2,18 +2,19 @@ from typing import Any, Dict, Optional
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.forms.models import BaseModelForm
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
-from django.core.cache import cache
-from catalog.models import ContactInfo, Product, Category
+
+from catalog.models import Category, ContactInfo, Product
 
 from .forms import ProductForm
-from .services import CategoryService, get_products_by_category
+from .services import get_products_by_category
 
 
 class ProductListView(ListView):
@@ -24,6 +25,18 @@ class ProductListView(ListView):
     context_object_name = "products"
     paginate_by = 6
     ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Получаем номер текущей страницы"""
+        page = self.request.GET.get("page", 1)
+        cache_key = f"product_list_page_{page}"
+        products = cache.get(cache_key)
+
+        if products is None:
+            products = super().get_queryset()
+            cache.set(cache_key, products, 60 * 15)
+
+        return products
 
 
 class ContactView(TemplateView):
@@ -99,6 +112,9 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
         product.owner = user
         product.save()
 
+        for page in range(1, 101):
+            cache.delete(f"product_list_page_{page}")
+
         return super().form_valid(form)
 
 
@@ -125,6 +141,9 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
         cache_key = f"product_detail_{self.object.pk}"
         cache.delete(cache_key)
 
+        for page in range(1, 101):
+            cache.delete(f"product_list_page_{page}")
+
         return response
 
 
@@ -149,11 +168,17 @@ class ProductDeleteView(LoginRequiredMixin, DeleteView):
         cache_key = f"product_detail_{product_id}"
         cache.delete(cache_key)
 
-        return super().delete(request, *args, **kwargs)
+        response = super().delete(request, *args, **kwargs)
+
+        for page in range(1, 101):
+            cache.delete(f"product_list_page_{page}")
+
+        return response
 
 
 class CategoryProductListView(ListView):
     """Список товаров определенной категории"""
+
     model = Product
     template_name = "catalog/category_product_list.html"
     context_object_name = "products"
@@ -161,7 +186,7 @@ class CategoryProductListView(ListView):
 
     def get_queryset(self):
         """Получает товары для текущей категории"""
-        category_id  = self.kwargs.get("pk")
+        category_id = self.kwargs.get("pk")
         get_object_or_404(Category, pk=category_id)
 
         return get_products_by_category(category_id)
@@ -175,4 +200,3 @@ class CategoryProductListView(ListView):
         context["category"] = category
 
         return context
-
