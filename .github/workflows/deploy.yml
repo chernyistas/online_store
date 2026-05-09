@@ -1,0 +1,62 @@
+
+name: Deploy to Server
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Copy project files to server
+        run: |
+          rsync -avz --delete \
+            --exclude '__pycache__' \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude 'venv' \
+            --exclude 'staticfiles' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_DIR }}
+
+      - name: Install dependencies and  migrate
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ${{ secrets.DEPLOY_DIR }}
+            
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
+          
+            source venv/bin/activate
+          
+            pip install --upgrade pip
+            pip install -r requirements.txt
+          
+            python manage.py migrate --noinput
+            
+            python manage.py collectstatic --noinput
+          EOF
+      - name: Restart application
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ${{ secrets.DEPLOY_DIR }}
+            source venv/bin/activate
+          
+            pkill -f "gunicorn" || true
+          
+            nohup gunicorn config.wsgi:application --bind 0.0.0.0:8000 > /tmp/gunicorn.log 2>&1 &
+          
+            echo "✅ Application restarted"
+          EOF
