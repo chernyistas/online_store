@@ -1,3 +1,16 @@
+
+Создание Dockerfile и docker-compose для Django с Nginx
+🔴 В файле есть синтаксическая ошибка!
+В шаге Install dependencies and migrate обрезана последняя строка:
+
+yaml
+./venv/bin/pyth
+Это должно быть:
+
+yaml
+./venv/bin/python manage.py collectstatic --noinput
+✅ Исправленный полный файл deploy.yml:
+yaml
 name: Deploy to Server
 
 on:
@@ -83,3 +96,185 @@ jobs:
             
             echo "✅ Application restarted"
           EOF
+📌 Запушь исправленный файл:
+bash
+git add .github/workflows/deploy.yml
+git commit -m "Fix syntax: complete collectstatic command"
+git push origin main
+🎯 Запусти workflow заново
+Теперь синтаксис правильный, и деплой должен пройти успешно!
+
+Напиши результат! 🚀
+
+This response is AI-generated, for reference only.
+ImportError: Couldn't import Django. Are you sure it's installed and available on your PYTHONPATH environment variable? Did you forget to activate a virtual environment?
+Error: Process completed with exit code 1.
+🔴 Проблема: В шаге Restart application нет активации виртуального окружения
+Смотри: в шаге Install dependencies and migrate мы используем ./venv/bin/python, а в шаге Restart application у нас ./venv/bin/gunicorn — это правильно. Но ошибка говорит, что Django не найден.
+
+📌 Проверим, что происходит на сервере во время деплоя
+Добавь подробную диагностику в шаг Install dependencies and migrate:
+
+yaml
+- name: Install dependencies and migrate
+  run: |
+    ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+      cd ${{ secrets.DEPLOY_DIR }}
+      
+      echo "=== 1. Создание venv ==="
+      rm -rf venv
+      /usr/bin/python3 -m venv venv
+      
+      echo "=== 2. Установка pip ==="
+      ./venv/bin/pip install --upgrade pip
+      
+      echo "=== 3. Установка Django ==="
+      ./venv/bin/pip install Django==6.0.1
+      
+      echo "=== 4. Установка всех зависимостей ==="
+      ./venv/bin/pip install -r requirements.txt
+      
+      echo "=== 5. Проверка установки ==="
+      ./venv/bin/pip list | grep -E "Django|psycopg2"
+      ./venv/bin/python -c "import django; print(f'✅ Django {django.__version__} OK')"
+      
+      echo "=== 6. Миграции ==="
+      ./venv/bin/python manage.py migrate --noinput
+      
+      echo "=== 7. Статика ==="
+      ./venv/bin/python manage.py collectstatic --noinput
+      
+      echo "=== 8. Проверка путей ==="
+      ls -la ./venv/bin/python
+      ./venv/bin/python --version
+      
+      echo "✅ Готово"
+    EOF
+✅ Но самое вероятное: Ошибка в шаге Restart application
+Исправь его на:
+
+yaml
+- name: Restart application
+  run: |
+    ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+      cd ${{ secrets.DEPLOY_DIR }}
+      
+      # Останавливаем старый процесс
+      pkill -f "gunicorn" || true
+      
+      # Запускаем gunicorn напрямую из venv
+      ./venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --daemon
+      
+      # Проверяем, что процесс запустился
+      sleep 2
+      ps aux | grep gunicorn
+      
+      echo "✅ Application restarted"
+    EOF
+📌 Или проверь, что файл manage.py существует на сервере:
+yaml
+- name: Check files on server
+  run: |
+    ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+      cd ${{ secrets.DEPLOY_DIR }}
+      ls -la
+      ls -la manage.py
+      head -20 manage.py
+    EOF
+🎯 Полностью исправленный deploy.yml:
+Скопируй этот файл полностью:
+
+yaml
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Install rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Copy project files to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+            --exclude '__pycache__' \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude 'venv' \
+            --exclude 'staticfiles' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_DIR }}
+
+      - name: Install system dependencies
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            sudo apt update 
+            sudo apt install -y gcc libpq-dev python3-dev
+            echo "✅ System dependencies installed"
+          EOF
+
+      - name: Install dependencies and migrate
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ${{ secrets.DEPLOY_DIR }}
+            
+            echo "=== Creating venv ==="
+            rm -rf venv
+            /usr/bin/python3 -m venv venv
+            
+            echo "=== Installing dependencies ==="
+            ./venv/bin/pip install --upgrade pip
+            ./venv/bin/pip install -r requirements.txt
+            
+            echo "=== Verification ==="
+            ./venv/bin/pip list | grep Django
+            
+            echo "=== Migrations ==="
+            ./venv/bin/python manage.py migrate --noinput
+            
+            echo "=== Static files ==="
+            ./venv/bin/python manage.py collectstatic --noinput
+            
+            echo "✅ Dependencies installed"
+          EOF
+
+      - name: Restart application
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ${{ secrets.DEPLOY_DIR }}
+            
+            pkill -f "gunicorn" || true
+            
+            ./venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --daemon
+            
+            echo "✅ Application restarted"
+          EOF
+📌 Запушь и запусти:
+bash
+git add .github/workflows/deploy.yml
+git commit -m "Complete rewrite: clean venv, proper gunicorn start"
+git push origin main
+Напиши результат! 🚀
+
+This response is AI-generated, for reference only.
+
