@@ -28,7 +28,7 @@ jobs:
       - name: Copy project files to server
         run: |
           rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no" \
+            -e "ssh -o StrictHostKeyChecking=no -o UserKnowHostsFile=/dev/null" \
             --exclude '__pycache__' \
             --exclude '.git' \
             --exclude '.env' \
