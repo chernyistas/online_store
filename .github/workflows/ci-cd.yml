@@ -123,13 +123,11 @@ jobs:
       - name: Deploy with Docker
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-            echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/online-store:latest
-          
+            docker stop online_store_web online_store_nginx online_store_db online_store_redis|| true
+            docker rm online_store_web online_store_db online_store_nginx online_store_redis || true
             
-            docker stop online_store_web online_store_db online_store_redis|| true
-            docker rm online_store_web online_store_db online_store_redis || true
-          
+            docker network create online_store_network || true
+            
             docker run -d \
               --name online_store_db \
               --network online_store_network \
@@ -153,6 +151,30 @@ jobs:
               -v online_store_test_media_volume:/app/media \
               --env-file /home/${{ secrets.SSH_USER }}/online_store_test/.env \
               ${{ secrets.DOCKER_HUB_USERNAME }}/online-store:latest
+            
+            cat > /home/${{ secrets.SSH_USER }}/online_store_test/nginx.conf << 'NGINX'
+            server {
+                listen 80;
+                server_name _;
+                location /static/ {
+                    alias /app/media/;
+                }
+                location / {
+                    proxy_pass http://online_store_web:8000;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                }
+            }
+            NGINX 
+          
+            docker run -d \
+              --name online_store_nginx \
+              --network online_store_network \
+              -p 80:80 \
+              -v online_store_test_static_volume:/app/staticfiles \
+              -v online_store_test_media_volume:/app/media \
+              -v /home/${{ secrets.SSH_USER }}/online_store_test/nginx.conf:/etc/nginx/conf.d/default.conf:ro \
+              nginx:latest
           
             echo "✅ Deployed successfully!"
           EOF
